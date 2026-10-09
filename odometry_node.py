@@ -24,6 +24,8 @@ Two things that make life easier here:
 
 import sys
 
+import numpy as np
+
 if __name__ == "__main__":
     # This file is loaded BY the simulator; running it directly can't work.
     # (Delete this guard if you ever port the node to a real ROS 2 install.)
@@ -49,6 +51,8 @@ from geometry_msgs.msg import Quaternion
 WHEEL_RADIUS_M = 0.075          # metres
 TICKS_PER_REVOLUTION = 360
 DIST_PER_TICK = (2.0 * math.pi * WHEEL_RADIUS_M) / TICKS_PER_REVOLUTION  # ~0.00131 m
+
+
 
 
 class OdometryNode(Node):
@@ -112,6 +116,11 @@ class OdometryNode(Node):
         self.y: float = 0.0                  # fused position, metres (north)
         self.heading: float = 0.0            # radians. The rover starts facing EAST (0 rad);
                                              # x is east, y is north, counter-clockwise is positive
+        self.distance: float = 0.0
+        self.total_distance: float = 0.0
+        
+        self.lin_velo: float = 0.0
+        self.ang_velo: float = 0.0
 
         self.last_tick_count: int | None = None
         self.last_tick_time: float | None = None
@@ -119,8 +128,40 @@ class OdometryNode(Node):
         self.last_gps_time: float | None = None
         self.last_wheel_time: float | None = None
 
+        self.gps_point_1 = None
+        self.gps_point_2 = None
+        self.gps_point_3 = None
+
+        self.bc_center = np.array([0, 0])
+        self.bc_radius = 0
+
         self.wheel_msg_count: int = 0
         self.start_time: float = time.monotonic()   # use time.monotonic() to measure durations
+
+    def best_circle(self, x1, y1, x2, y2, x3, y3):
+        points = np.array([
+            [x1, y1],
+            [x2, y2],
+            [x3, y3]
+        ])
+
+        # Build the linear system A @ [D, E, F] = b
+        A = np.column_stack((
+            points[:, 0],
+            points[:, 1],
+            np.ones(3)
+        ))
+
+        b = -(points[:, 0]**2 + points[:, 1]**2)
+
+        D, E, F = np.linalg.solve(A, b)
+
+        # Calculate center and radius
+        center = np.array([-D / 2, -E / 2])
+        radius = np.sqrt((D**2 + E**2) / 4 - F)
+
+        self.bc_center = center
+        self.bc_radius = radius
 
     # -----------------------------------------------------------------------
     # Wheel encoder callback
@@ -183,8 +224,18 @@ class OdometryNode(Node):
         if(not(delta_ticks == 0) or not(delta_time <= .005)):
             self.last_tick_count = msg.tick_count
             self.last_tick_time = msg.timestamp
-        distance = delta_ticks * DIST_PER_TICK
-        self.x = distance
+            self.x += self.distance * math.cos(self.heading)
+            self.y += self.distance * math.sin(self.heading)
+            self.distance = delta_ticks * DIST_PER_TICK
+            self.lin_velo = self.distance/delta_time
+        else:
+            print("dupicate tick detected!")
+        
+            
+        
+
+        
+        
         self.publish_odometry()
         
 
@@ -215,11 +266,30 @@ class OdometryNode(Node):
         """
         # TODO: implement
         #
-        # Suggested approach:
-        #   1. Compute a weight w_gps based on msg.covariance (lower cov = higher trust).
-        #   2. Blend: self.x = (1 - w_gps) * self.x + w_gps * msg.x
-        #             self.y = (1 - w_gps) * self.y + w_gps * msg.y
-        #   3. Update self.last_gps_time = msg.timestamp
+        
+        w_gps = 1 - msg.covariance
+        self.x = (1 - w_gps) * self.x + w_gps * msg.x
+        self.y = (1 - w_gps) * self.y + w_gps * msg.y
+        self.last_gps_time = msg.timestamp
+
+        self.gps_point_3 = self.gps_point_2
+        self.gps_point_2 = self.gps_point_1
+        self.gps_point_1 = np.array([self.x, self.y])
+
+        #Compute Heading
+        if(self.gps_point_1 is not None and
+           self.gps_point_2 is not None and 
+           self.gps_point_3 is not None):
+            self.best_circle(
+                self.gps_point_1[0],
+                self.gps_point_1[1],
+                self.gps_point_2[0],
+                self.gps_point_2[1],
+                self.gps_point_3[0],
+                self.gps_point_3[1]
+                )
+            self.ang_velo = self.lin_velo/self.bc_center
+            self.heading = self.ang_velo * self.total_distance
         pass
 
     # -----------------------------------------------------------------------
@@ -254,7 +324,15 @@ class OdometryNode(Node):
         msg.header.frame_id = "odom"
         msg.child_frame_id = "base_link"
         msg.pose.pose.position.x = self.x
-        msg.pose.pose.position.y = 0
+        msg.pose.pose.position.y = self.y
+        msg.pose.pose.Orientation = Quaternion(
+            0,
+            0,
+            math.sin(self.heading/2),
+            math.cos(self.heading/2)
+        )
+        msg.twist.twist.linear.x = self.lin_velo
+        msg.twist.twist.angular.z = self.ang_velo
        
         self.odom_pub.publish(msg)
 
@@ -283,6 +361,8 @@ class OdometryNode(Node):
 
         
         pass
+
+
 
 
 # ---------------------------------------------------------------------------
