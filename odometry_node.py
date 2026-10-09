@@ -212,6 +212,9 @@ class OdometryNode(Node):
         #      heading come from and how does it change? See "Heading is not
         #      measured" in the README before you write this line.
         #   6. Call self.publish_odometry().
+
+        
+
         if(self.last_tick_count == None):
             self.last_tick_count = 0
         
@@ -221,15 +224,13 @@ class OdometryNode(Node):
         delta_ticks = msg.tick_count - self.last_tick_count
         delta_time = msg.timestamp - self.last_tick_time
 
-        if(not(delta_ticks == 0) or not(delta_time <= .005)):
+        if(not(delta_ticks == 0) and not(delta_time <= .005)):
             self.last_tick_count = msg.tick_count
             self.last_tick_time = msg.timestamp
             self.x += self.distance * math.cos(self.heading)
             self.y += self.distance * math.sin(self.heading)
             self.distance = delta_ticks * DIST_PER_TICK
             self.lin_velo = self.distance/delta_time
-        else:
-            print("dupicate tick detected!")
         
             
         
@@ -288,7 +289,7 @@ class OdometryNode(Node):
                 self.gps_point_3[0],
                 self.gps_point_3[1]
                 )
-            self.ang_velo = self.lin_velo/self.bc_center
+            self.ang_velo = self.lin_velo/self.bc_radius
             self.heading = self.ang_velo * self.total_distance
         pass
 
