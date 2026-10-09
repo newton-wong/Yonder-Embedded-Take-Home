@@ -77,31 +77,33 @@ class OdometryNode(Node):
         # This is intentional and mirrors real ROS 2 behaviour.
         #
         # Hint: the QoS profile you need looks like:
-        #   QoSProfile(reliability=ReliabilityPolicy.???, depth=10)
+        qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT, 
+                            durability=DurabilityPolicy.VOLATILE, 
+                            depth=10)
+
         #
-        # self.tick_sub = self.create_subscription(
-        #     WheelTicks, "/wheel_ticks", self.wheel_tick_callback, ???
-        # )
+        self.tick_sub = self.create_subscription(
+            WheelTicks, "/wheel_ticks", self.wheel_tick_callback, qos
+        )
 
         # TODO: Create a subscriber for /gps_estimate (same QoS considerations).
         #
-        # self.gps_sub = self.create_subscription(
-        #     GPSEstimate, "/gps_estimate", self.gps_callback, ???
-        # )
+        self.gps_sub = self.create_subscription(
+            GPSEstimate, "/gps_estimate", self.gps_callback, qos
+        )
 
         # ------------------------------------------------------------------
         # Publisher
         # ------------------------------------------------------------------
         # TODO: Create a publisher for /odom.
         #
-        # self.odom_pub = self.create_publisher(Odometry, "/odom", 10)
+        self.odom_pub = self.create_publisher(Odometry, "/odom", 10, qos)
 
         # ------------------------------------------------------------------
         # Timer — 1 Hz monitoring output
         # ------------------------------------------------------------------
-        # TODO: Create a timer that calls self.monitoring_callback once per second.
-        #
-        # self.monitor_timer = self.create_timer(1.0, self.monitoring_callback)
+        
+        self.monitor_timer = self.create_timer(1.0, self.monitoring_callback)
 
         # ------------------------------------------------------------------
         # State  — add whatever you need
@@ -254,6 +256,8 @@ class OdometryNode(Node):
             [odom] pos=(1.23, 0.45)m  enc=0.02s ago @49.8Hz  gps=0.91s ago
         """
         # TODO: implement
+        
+        
         pass
 
 
