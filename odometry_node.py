@@ -140,11 +140,16 @@ class OdometryNode(Node):
         self.gps_point_8 = None
         self.gps_point_9 = None
 
+        self.last_heading = 0.0
+
         self.bc_center = np.array([0, 0])
         self.bc_radius = 0
 
         self.wheel_msg_count: int = 0
         self.start_time: float = time.monotonic()   # use time.monotonic() to measure durations
+
+    def sigmoid(self, x):
+        return 1 / (1 + np.exp(-x))
 
     def best_circle(self, x1, y1, x2, y2, x3, y3):
         points = np.array([
@@ -277,7 +282,8 @@ class OdometryNode(Node):
             (That's Stretch Goal B — but even a fixed weighting is fine here.)
         """
         # TODO: implement
-        #
+        
+        print("covariance is: ", msg.covariance)
         
         w_gps = 1 - msg.covariance
         self.x = (1 - w_gps) * self.x + w_gps * msg.x
@@ -315,17 +321,27 @@ class OdometryNode(Node):
                     self.gps_point_6, 
                     self.gps_point_7]
         if all(points is not None for points in gps_list):
-                m, b = np.polyfit([p[0] for p in gps_list], [p[1] for p in gps_list], 1)
-                dx = gps_list[-1][0] - gps_list[0][0]
-                dy = gps_list[-1][1] - gps_list[0][1]
-                angle = math.atan(m)
+            m, b = np.polyfit([p[0] for p in gps_list], [p[1] for p in gps_list], 1)
+            dx = gps_list[-1][0] - gps_list[0][0]
+            dy = gps_list[-1][1] - gps_list[0][1]
+            angle = math.atan(m)
 
-                dot = dx + m * dy
+            dot = dx + m * dy
 
-                if dot > 0:
-                    angle += math.pi
+            if dot > 0:
+                angle += math.pi
 
-                self.heading = angle % (2 * math.pi)
+            self.last_heading = self.heading
+            self.heading = angle % (2 * math.pi)
+
+            
+
+            # Compute heading rate
+            self.ang_velo = (self.heading - self.last_heading) / (time.monotonic() - self.last_gps_time)
+
+
+
+        
 
         
 

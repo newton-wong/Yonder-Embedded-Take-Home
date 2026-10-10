@@ -16,6 +16,8 @@ run ~python sim/launch.py --visualize
 - switched to line of best fit model of the most recent 7 gps coordinates
 - added everything to odometry
 
+
 ## 3. Known limitations
 
 Can't find the angular velocity unless I find the line of best fit of all the headings and find the slope of that. 
+On sharp turns, it might take a bit for the odometry to correctly identify the robot. 
