@@ -240,7 +240,7 @@ class OdometryNode(Node):
             self.distance = delta_ticks * DIST_PER_TICK
             self.lin_velo = self.distance/delta_time
             self.total_distance += self.distance
-            self.last_tick_time = time.monotonic()
+            self.last_wheel_time = time.monotonic()
             self.total_ticks += 1
 
         
