@@ -124,9 +124,11 @@ class OdometryNode(Node):
 
         self.last_tick_count: int | None = None
         self.last_tick_time: float | None = None
+        self.total_ticks: int = 0
 
         self.last_gps_time: float | None = None
         self.last_wheel_time: float | None = None
+
 
         self.gps_point_1 = None
         self.gps_point_2 = None
@@ -238,17 +240,13 @@ class OdometryNode(Node):
             self.distance = delta_ticks * DIST_PER_TICK
             self.lin_velo = self.distance/delta_time
             self.total_distance += self.distance
-
-    
-        
+            self.last_tick_time = time.monotonic()
+            self.total_ticks += 1
 
         
         if(self.last_gps_time is not None):
             if(time.monotonic() - self.last_gps_time > 2.0):
                 self.heading = self.ang_velo * self.total_distance
-        
-
-        
         
         self.publish_odometry()
         
@@ -329,11 +327,6 @@ class OdometryNode(Node):
 
                 self.heading = angle % (2 * math.pi)
 
-                print("Slope:", m)
-                print("dx, dy:", dx, dy)
-                print("Dot product:", dot)
-                print("Heading degrees:", math.degrees(self.heading))
-
         
 
     # -----------------------------------------------------------------------
@@ -401,10 +394,18 @@ class OdometryNode(Node):
             [odom] pos=(1.23, 0.45)m  enc=0.02s ago @49.8Hz  gps=0.91s ago
         """
         # TODO: implement
-        
+        if self.last_wheel_time is not None:
+            print("Seconds since last /wheel_ticks message: {:.2f} seconds ago".format(time.monotonic() - self.last_wheel_time))
+        else:
+            print("Seconds since last /wheel_ticks message: N/A")
+        if self.last_gps_time is not None:
+            print("Seconds since last /gps_estimate message: {:.2f} seconds ago".format(time.monotonic() - self.last_gps_time))
+        else:
+            print("Seconds since last /gps_estimate message: N/A")
+        print("Measured /wheel_ticks receive rate: {:.1f}Hz".format(self.total_ticks / (time.monotonic() - self.start_time)))
+        print("Current fused position: ({:.2f}, {:.2f})".format(self.x, self.y))
 
         
-        pass
 
 
 
