@@ -131,6 +131,12 @@ class OdometryNode(Node):
         self.gps_point_1 = None
         self.gps_point_2 = None
         self.gps_point_3 = None
+        self.gps_point_4 = None
+        self.gps_point_5 = None
+        self.gps_point_6 = None
+        self.gps_point_7 = None
+        self.gps_point_8 = None
+        self.gps_point_9 = None
 
         self.bc_center = np.array([0, 0])
         self.bc_radius = 0
@@ -233,10 +239,7 @@ class OdometryNode(Node):
             self.lin_velo = self.distance/delta_time
             self.total_distance += self.distance
 
-        print(f"Heading is {self.heading}")
-        print(f"Linear Velocity is {self.lin_velo}")
-        print(f"Ang Velocity is {self.ang_velo}")
-        print(f"Raduis is {self.bc_radius}")
+    
         
 
         
@@ -283,6 +286,10 @@ class OdometryNode(Node):
         self.y = (1 - w_gps) * self.y + w_gps * msg.y
         self.last_gps_time = msg.timestamp
 
+        self.gps_point_7 = self.gps_point_6
+        self.gps_point_6 = self.gps_point_5
+        self.gps_point_5 = self.gps_point_4
+        self.gps_point_4 = self.gps_point_3
         self.gps_point_3 = self.gps_point_2
         self.gps_point_2 = self.gps_point_1
         self.gps_point_1 = np.array([self.x, self.y])
@@ -299,10 +306,35 @@ class OdometryNode(Node):
                 self.gps_point_3[0],
                 self.gps_point_3[1]
                 )
-            self.ang_velo = self.lin_velo/self.bc_radius
-            self.heading = math.atan2((-2*self.gps_point_1[0] + 2*self.bc_center[0]),
-                                      (2*self.gps_point_1[1] - 2*self.bc_center[1]))
-        pass
+            # self.ang_velo = self.lin_velo/self.bc_radius
+            # self.heading = math.atan2((-2*self.gps_point_1[0] + 2*self.bc_center[0]),
+            #                           (2*self.gps_point_1[1] - 2*self.bc_center[1]))
+        gps_list = [self.gps_point_1, 
+                    self.gps_point_2, 
+                    self.gps_point_3, 
+                    self.gps_point_4, 
+                    self.gps_point_5, 
+                    self.gps_point_6, 
+                    self.gps_point_7]
+        if all(points is not None for points in gps_list):
+                m, b = np.polyfit([p[0] for p in gps_list], [p[1] for p in gps_list], 1)
+                dx = gps_list[-1][0] - gps_list[0][0]
+                dy = gps_list[-1][1] - gps_list[0][1]
+                angle = math.atan(m)
+
+                dot = dx + m * dy
+
+                if dot > 0:
+                    angle += math.pi
+
+                self.heading = angle % (2 * math.pi)
+
+                print("Slope:", m)
+                print("dx, dy:", dx, dy)
+                print("Dot product:", dot)
+                print("Heading degrees:", math.degrees(self.heading))
+
+        
 
     # -----------------------------------------------------------------------
     # Odometry publisher
