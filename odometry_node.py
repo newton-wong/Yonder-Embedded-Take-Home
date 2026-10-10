@@ -231,8 +231,18 @@ class OdometryNode(Node):
             self.y += self.distance * math.sin(self.heading)
             self.distance = delta_ticks * DIST_PER_TICK
             self.lin_velo = self.distance/delta_time
+            self.total_distance += self.distance
+
+        print(f"Heading is {self.heading}")
+        print(f"Linear Velocity is {self.lin_velo}")
+        print(f"Ang Velocity is {self.ang_velo}")
+        print(f"Raduis is {self.bc_radius}")
         
-            
+
+        
+        if(self.last_gps_time is not None):
+            if(time.monotonic() - self.last_gps_time > 2.0):
+                self.heading = self.ang_velo * self.total_distance
         
 
         
@@ -290,7 +300,8 @@ class OdometryNode(Node):
                 self.gps_point_3[1]
                 )
             self.ang_velo = self.lin_velo/self.bc_radius
-            self.heading = self.ang_velo * self.total_distance
+            self.heading = math.atan2((-2*self.gps_point_1[0] + 2*self.bc_center[0]),
+                                      (2*self.gps_point_1[1] - 2*self.bc_center[1]))
         pass
 
     # -----------------------------------------------------------------------
