@@ -4,12 +4,18 @@ Replace this template with your own. Keep it short: write what a teammate would 
 
 ## 1. How to run it
 
-A reviewer should be able to follow this from a fresh clone without asking you anything. Test it yourself in a clean checkout before you submit.
+run ~python sim/launch.py --visualize
 
 ## 2. Thought process
 
-Your approach and the reasoning behind it, in bullet points.
+- First, I was reading up on ROS and the QoS stuff
+- Then start up all the publisher/subscriber stuff. Look at encoder_publisher.py for reference
+- Work on wheel ticks and ensure that publisher/subscriber stuff is working
+- How do I get the heading? first try a circle intersecting three most recent gps coordinates, easy to get angular velocity and angular velocity. I had to parameterize the circle and set heading to the derivative of the circle at the last gps point
+- found out that I was overcomplicating because center of circle would be way off at 50,1, causing heading to be way off, making it unreliable
+- switched to line of best fit model of the most recent 7 gps coordinates
+- added everything to odometry
 
 ## 3. Known limitations
 
-What doesn't work, and what you'd do next. Being upfront counts in your favor.
+Can't find the angular velocity unless I find the line of best fit of all the headings and find the slope of that. 
